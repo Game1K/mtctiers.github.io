@@ -294,11 +294,6 @@
       "name": "big-nub",
       "region": "NA",
       "device": "MK"
-    },
-    {
-      "name": "DangerMario",
-      "region": "EU",
-      "device": "MK"
     }
   ],
   "Emerald": {
@@ -355,8 +350,7 @@
       "MGK",
       "Afdemonking",
       "Luther",
-      "Kaeye",
-      "DangerMario"
+      "Kaeye"
     ],
     "LT3": [
       "big-nub"
@@ -537,21 +531,6 @@
     ],
     "LT5": [
       "Luther"
-    ]
-  },
-  "Manipulation": {
-    "HT1": [
-      "DangerMario"
-    ]
-  },
-  "Building": {
-    "LT5": [
-      "DangerMario"
-    ]
-  },
-  "Hiring Baddies": {
-    "HT1": [
-      "DangerMario"
     ]
   }
 }
