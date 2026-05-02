@@ -289,11 +289,6 @@
       "name": "Corpse",
       "region": "NA",
       "device": "CT"
-    },
-    {
-      "name": "big-nub",
-      "region": "NA",
-      "device": "MK"
     }
   ],
   "Emerald": {
@@ -328,9 +323,6 @@
       "Mane",
       "LastChance",
       "Husky_Multicraft"
-    ],
-    "LT3": [
-      "big-nub"
     ],
     "HT4": [
       "FarXD"
@@ -408,7 +400,6 @@
     "LT1": [
       "system1117",
       "LifoMC",
-      "big-nub",
       "actuallybad"
     ],
     "HT2": [
@@ -521,8 +512,7 @@
       "Jerryisking",
       "Mane",
       "Bloody_Hell",
-      "Possessed_YT",
-      "big-nub"
+      "Possessed_YT"
     ],
     "HT3": [
       "Vorthexis",
