@@ -284,6 +284,16 @@
       "name": "Corpse",
       "region": "NA",
       "device": "CT"
+    },
+    {
+      "name": "Kaeye",
+      "region": "NA",
+      "device": "MB"
+    },
+    {
+      "name": "Kaeye",
+      "region": "NA",
+      "device": "MB"
     }
   ],
   "Emerald": {
