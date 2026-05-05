@@ -68,12 +68,18 @@
 
 <!-- Profile modal -->
 <div id="profileModal" class="modal-overlay" onclick="this.style.display='none'">
-    <div class="modal-content" onclick="event.stopPropagation()">
-        <div id="pRank"   style="font-family:'MultiCraftFont'; color:var(--purple); font-size:0.7rem;">RANK #--</div>
-        <h2  id="pName"   style="font-family:'MultiCraftFont'; color:#fff; margin:10px 0; font-size:1.8rem;">Player</h2>
-        <div id="pMeta"   style="margin-bottom:15px;"></div>
-        <div id="pPoints" style="color:var(--gold); font-family:'MultiCraftFont'; font-size:1.4rem; margin-bottom:20px;">0 PTS</div>
-        <div id="pTiers"  style="display:flex; flex-wrap:wrap; justify-content:center; gap:18px; border-top:1px solid #222; padding-top:20px;"></div>
+    <div class="profile-modal-content" onclick="event.stopPropagation()">
+        <button class="profile-close-btn" onclick="document.getElementById('profileModal').style.display='none'">✕</button>
+        <div class="profile-left">
+            <div id="pRank" class="profile-rank-badge">RANK #--</div>
+            <h2 id="pName" class="profile-name">Player</h2>
+            <div id="pMeta" style="margin-bottom:14px;"></div>
+            <div id="pPoints" class="profile-elo">0 <span class="profile-elo-label">PTS</span></div>
+        </div>
+        <div class="profile-right">
+            <div class="profile-kits-label">KIT RANKINGS</div>
+            <div id="pTiers" class="profile-kits-grid"></div>
+        </div>
     </div>
 </div>
 
@@ -368,24 +374,20 @@ async function switchTab(tab) {
 function openProfile(name) {
     playBtnSound();
     if (!(name in DATA.Overall)) return;
-    const sorted   = Object.entries(DATA.Overall).sort((a, b) => b[1] - a[1]);
-    const rankIdx  = sorted.findIndex(x => x[0] === name);
+    const sorted  = Object.entries(DATA.Overall).sort((a, b) => b[1] - a[1]);
+    const rankIdx = sorted.findIndex(x => x[0] === name);
 
     document.getElementById('pRank').innerText   = "RANK #" + (rankIdx + 1);
     document.getElementById('pName').innerText   = name;
     document.getElementById('pMeta').innerHTML   = getTags(name);
-    document.getElementById('pPoints').innerText = DATA.Overall[name] + " PTS";
+    document.getElementById('pPoints').innerHTML = DATA.Overall[name] + ' <span class="profile-elo-label">PTS</span>';
 
-    let ranked = [];
-    let unranked = [];
+    let ranked = [], unranked = [];
 
     Object.keys(KIT_MAP).forEach(k => {
         if (k === "Overall") return;
-
-        let found = false;
-        let display = "";
-        let color = "var(--grey)";
-        let img = KIT_MAP[k]?.img;
+        let found = false, display = "", color = "var(--grey)";
+        const img = KIT_MAP[k]?.img;
 
         if (DATA[k]) {
             for (let t in DATA[k]) {
@@ -400,31 +402,23 @@ function openProfile(name) {
         }
 
         const html = `<div class="p-kit-item">
-
             <div class="kit-popup" style="border-color:${color}">
-                <span style="color:${color}">
-                    ${found ? display : "UNRANKED"}
-                </span><br>
+                <span style="color:${color}">${found ? display : "UNRANKED"}</span><br>
                 <span style="color:#666">${k}</span>
             </div>
-
-            <div class="p-kit-circle" style="border-color:${color}; opacity:${found ? '1' : '0.25'};">
-                ${found && img ? `<img src="${img}">` : ""}
+            <div class="p-kit-circle" style="border-color:${found ? color : '#222'}; opacity:${found ? '1' : '0.3'};">
+                ${img ? `<img src="${img}">` : ""}
             </div>
-
-            <div style="font-size:0.6rem; color:${color}; font-weight:bold; margin-top:5px;">
-                ${found ? display : "UNRANKED"}
+            <div class="p-kit-tier-label" style="color:${color};">
+                ${found ? display : "—"}
             </div>
-
         </div>`;
 
         if (found) ranked.push(html);
         else unranked.push(html);
     });
 
-    // ✅ ranked first, untested last
-    const grid = [...ranked, ...unranked].join("");
-    document.getElementById('pTiers').innerHTML = grid;
+    document.getElementById('pTiers').innerHTML = [...ranked, ...unranked].join("");
     document.getElementById('profileModal').style.display = 'flex';
 }
 

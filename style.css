@@ -216,6 +216,120 @@ header, nav, #displayList, .info-btn {
     animation: cyberZoom 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
 }
 
+/* ─── Profile Modal (two-column layout) ────────────────── */
+.profile-modal-content {
+    background: #06060a;
+    border: 1.5px solid var(--border);
+    border-radius: 14px;
+    padding: 0;
+    width: 620px;
+    max-width: calc(100vw - 32px);
+    display: flex;
+    flex-direction: row;
+    overflow: visible;
+    position: relative;
+    box-shadow: 0 0 40px rgba(var(--theme-rgb), 0.2);
+    animation: cyberZoom 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+}
+
+.profile-close-btn {
+    position: absolute;
+    top: 12px;
+    right: 14px;
+    background: #111;
+    border: 1px solid #333;
+    color: #888;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-size: 0.7rem;
+    z-index: 10;
+    transition: border-color 0.2s, color 0.2s;
+    font-family: monospace;
+}
+.profile-close-btn:hover { border-color: var(--purple); color: #fff; }
+
+.profile-left {
+    padding: 28px 24px 28px 28px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 210px;
+    border-right: 1px solid rgba(var(--theme-rgb), 0.15);
+    flex-shrink: 0;
+}
+
+.profile-rank-badge {
+    font-family: 'MultiCraftFont';
+    font-size: 0.6rem;
+    color: var(--gold);
+    background: rgba(255, 215, 0, 0.08);
+    border: 1px solid rgba(255, 215, 0, 0.35);
+    border-radius: 20px;
+    padding: 3px 10px;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+}
+
+.profile-name {
+    font-family: 'MultiCraftFont';
+    color: #fff;
+    margin: 0 0 10px 0;
+    font-size: 1.9rem;
+    line-height: 1.1;
+    word-break: break-word;
+}
+
+.profile-elo {
+    font-family: 'MultiCraftFont';
+    font-size: 2rem;
+    color: var(--gold);
+    margin-top: auto;
+    padding-top: 16px;
+}
+
+.profile-elo-label {
+    font-size: 0.75rem;
+    color: #888;
+    letter-spacing: 2px;
+}
+
+.profile-right {
+    flex: 1;
+    padding: 28px 22px;
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    max-height: 70vh;
+}
+
+.profile-kits-label {
+    font-family: 'MultiCraftFont';
+    font-size: 0.6rem;
+    color: #555;
+    letter-spacing: 2px;
+    margin-bottom: 16px;
+}
+
+.profile-kits-grid {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 14px;
+    overflow: visible;
+}
+
+.p-kit-tier-label {
+    font-size: 0.55rem;
+    font-family: 'MultiCraftFont';
+    font-weight: bold;
+    margin-top: 5px;
+    text-align: center;
+}
+
 .tier-card {
     background: #050508;
     border: 1px solid var(--border);
@@ -483,7 +597,8 @@ nav {
     display:     flex;
     flex-direction: column;
     align-items: center;
-    width:       85px;
+    width:       70px;
+    overflow:    visible;
 }
 
 .p-kit-circle {
@@ -516,7 +631,9 @@ nav {
     opacity:    0;
     visibility: hidden;
     transition: opacity 0.2s, visibility 0.2s, transform 0.2s;
-    z-index:    3000;
+    z-index:        9999;
+    pointer-events: none;
+    white-space:    nowrap;
     font-family:'MultiCraftFont';
     font-size:  0.6rem;
     text-align: center;
@@ -580,6 +697,20 @@ nav {
 
 /* ─── Mobile responsive ─────────────────────────────────── */
 @media (max-width: 700px) {
+
+    .profile-modal-content {
+        flex-direction: column;
+        width: calc(100% - 32px);
+    }
+    .profile-left {
+        border-right: none;
+        border-bottom: 1px solid rgba(var(--theme-rgb), 0.15);
+        padding: 22px 18px;
+    }
+    .profile-right {
+        padding: 18px;
+        max-height: 50vh;
+    }
 
     /* Header */
     header { padding-top: 80px; }
