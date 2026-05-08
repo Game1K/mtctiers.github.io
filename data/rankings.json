@@ -299,6 +299,11 @@
       "name": "SHADE",
       "region": "AS",
       "device": "Unknown"
+    },
+    {
+      "name": "Terminator",
+      "region": "AS",
+      "device": "Unknown"
     }
   ],
   "Emerald": {
