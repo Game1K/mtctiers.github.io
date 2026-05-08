@@ -294,6 +294,11 @@
       "name": "Game1K",
       "region": "NA",
       "device": "MK"
+    },
+    {
+      "name": "SHADE",
+      "region": "AS",
+      "device": "Unknown"
     }
   ],
   "Emerald": {
