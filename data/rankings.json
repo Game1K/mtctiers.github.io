@@ -297,6 +297,9 @@
     }
   ],
   "Emerald": {
+    "HT1": [
+      "Game1K"
+    ],
     "LT1": [
       "sample",
       "system1117"
@@ -354,6 +357,9 @@
     ]
   },
   "Emerald KB": {
+    "HT1": [
+      "Game1K"
+    ],
     "LT1": [
       "system1117"
     ],
