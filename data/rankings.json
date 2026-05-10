@@ -304,6 +304,11 @@
       "name": "Terminator",
       "region": "AS",
       "device": "MK"
+    },
+    {
+      "name": "abnormal",
+      "region": "EU",
+      "device": "MK"
     }
   ],
   "Emerald": {
