@@ -309,6 +309,11 @@
       "name": "abnormal",
       "region": "EU",
       "device": "MK"
+    },
+    {
+      "name": "Duality",
+      "region": "Unknown",
+      "device": "MB"
     }
   ],
   "Emerald": {
