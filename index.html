@@ -17,6 +17,7 @@
 <meta property="twitter:image" content="https://mtctiers.github.io/assets/mtctiers.png">
 <meta name="theme-color" content="#a855f7">
 <link rel="stylesheet" href="style.css">
+
 </head>
 <body>
 <div class="sweep-bg"></div>
@@ -30,7 +31,8 @@
 
 <nav>
     <div class="nav-center">
-        <div id="nav-rankings" class="nav-link active" onclick="switchTab('rankings')">RANKINGS</div>
+        <div id="nav-home"     class="nav-link active" onclick="switchTab('home')">HOME</div>
+        <div id="nav-rankings" class="nav-link"        onclick="switchTab('rankings')">RANKINGS</div>
         <div id="nav-hof"      class="nav-link"        onclick="switchTab('hof')">HALL OF FAME</div>
         <div id="nav-testers"  class="nav-link"        onclick="switchTab('testers')">TIER TESTERS</div>
     </div>
@@ -42,7 +44,33 @@
 
 <div id="viewLabel">OVERALL</div>
 <div id="kitBar"></div>
+
+<!-- Filter bar — shown only on Overall -->
+<div id="filterBar">
+    <span class="filter-label">FILTER BY</span>
+    <select class="filter-select" id="filterKit" onchange="applyFilters()">
+        <option value="">ALL KITS</option>
+    </select>
+    <select class="filter-select" id="filterRegion" onchange="applyFilters()">
+        <option value="">ALL REGIONS</option>
+    </select>
+    <select class="filter-select" id="filterDevice" onchange="applyFilters()">
+        <option value="">ALL DEVICES</option>
+    </select>
+    <select class="filter-select" id="filterRetired" onchange="applyFilters()">
+        <option value="">ACTIVE + RETIRED</option>
+        <option value="active">ACTIVE ONLY</option>
+        <option value="retired">RETIRED ONLY</option>
+    </select>
+    <button id="filterResetBtn" onclick="resetFilters()">RESET</button>
+</div>
+
+<!-- Podium top 3 -->
+<div id="topPlayersTitle" style="display:none;font-family:'MultiCraftFont',monospace;font-size:1.8rem;color:var(--gold);text-shadow:0 0 15px var(--gold-glow);text-align:center;width:100%;margin-bottom:10px;animation:blurRise 0.5s ease-out both;">Top Players</div>
+<div id="podiumWrap"></div>
+
 <div id="displayList"></div>
+<div id="showMoreBtn" onclick="toggleShowMore()">FULL LEADERBOARD ▶</div>
 
 <div class="info-btn" onclick="openInfo()">i</div>
 
@@ -62,18 +90,37 @@
                 <div>HT4 = 5 pts</div> <div>LT4 = 3 pts</div>
                 <div>HT5 = 2 pts</div> <div>LT5 = 1 pt</div>
             </div>
+            <hr style="border:0; border-top:1px solid #333; margin:15px 0;">
+            <b style="color:var(--gold); font-family:'MultiCraftFont'; font-size:0.75rem;">RANK TITLES:</b>
+            <div style="font-size:0.65rem; margin-top:12px; display:flex; flex-direction:column; gap:6px;">
+                <div><span style="color:#ffd700; font-family:'MultiCraftFont';">Combat Grandmaster</span> - #1 or 300+ pts</div>
+                <div><span style="color:#00eeff; font-family:'MultiCraftFont';">Combat Master</span> - Top 3 or 200+ pts</div>
+                <div><span style="color:#ff6a00; font-family:'MultiCraftFont';">Combat Ace</span> - 150+ pts</div>
+                <div><span style="color:#b044ff; font-family:'MultiCraftFont';">Combat Specialist</span> - 50+ pts</div>
+                <div><span style="color:#00ff88; font-family:'MultiCraftFont';">Combat Cadet</span> - 20+ pts</div>
+                <div><span style="color:#ff7f50; font-family:'MultiCraftFont';">Combat Novice</span> - 10+ pts</div>
+                <div><span style="color:#888;    font-family:'MultiCraftFont';">Rookie</span> - Under 10 pts</div>
+            </div>
         </div>
     </div>
 </div>
 
 <!-- Profile modal -->
-<div id="profileModal" class="modal-overlay" onclick="this.style.display='none'">
+<div id="profileModal" class="modal-overlay" onclick="this.style.display='none';setUrl({player:''});document.querySelector('.profile-modal-content').style.boxShadow=''">
     <div class="profile-modal-content" onclick="event.stopPropagation()">
-        <button class="profile-close-btn" onclick="document.getElementById('profileModal').style.display='none'">✕</button>
+        <button class="profile-close-btn" onclick="document.getElementById('profileModal').style.display='none';setUrl({player:''});document.querySelector('.profile-modal-content').style.boxShadow=''">✕</button>
+        <button class="profile-copy-btn" id="profileCopyBtn" onclick="copyProfileLink()" title="Copy profile link">⧉</button>
         <div class="profile-left">
-            <div id="pRank" class="profile-rank-badge">RANK #--</div>
+            <!-- CHANGE #1: rank badge + title badge on the same line -->
+            <div id="pBadgeRow" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
+                <div id="pRank" class="profile-rank-badge" style="margin-bottom:0;">RANK #--</div>
+                <div id="pTitleBadge" style="font-family:'MultiCraftFont',monospace;font-size:0.55rem;border-radius:20px;padding:3px 10px;letter-spacing:1px;border:1px solid;display:inline-block;"></div>
+            </div>
             <h2 id="pName" class="profile-name">Player</h2>
             <div id="pMeta" style="margin-bottom:14px;"></div>
+            <div id="pSkin" style="margin-top:auto; padding-top:12px; display:none; justify-content:center;">
+                <img id="pSkinImg" src="" alt="" style="width:256px; height:256px; image-rendering:pixelated; object-fit:contain;">
+            </div>
             <div id="pPoints" class="profile-elo">0 <span class="profile-elo-label">PTS</span></div>
         </div>
         <div class="profile-right">
@@ -85,38 +132,21 @@
 
 <script>
 /* ═══════════════════════════════════════════════════════════════
-   CONFIGURATION — edit these maps to add/change regions, devices,
-   or kits. CSS variables and tag classes are generated automatically.
+   CONFIGURATION
    ═══════════════════════════════════════════════════════════════ */
 
-/**
- * KIT_MAP
- * key   → display name shown in the kit bar button
- * img   → path to the icon shown in buttons / kit circles (empty for Overall)
- * color → accent color for this kit's active button & tier labels
- */
 const KIT_MAP = {
-    // Each kit has a unique color — no two should be the same hue.
-    // To change a color just edit the hex value on the right.
-    "Overall":          { img: "",                          color: "var(--theme)" }, // theme
-    "Emerald":          { img: "assets/emerald.png",        color: "#1a7a1a" },
-    "Emerald KB":       { img: "assets/emerald_kb.png",     color: "#00e5b0" },
-    "Dragonhide KB":    { img: "assets/dragonhide_kb.png",  color: "#ff6a00" },
-    "Manhunt": { img: "assets/manhunt.png",          color: "#ff1a6b" },
-    "Diamond":          { img: "assets/diamond.png",        color: "#00c8ff" },
-    "Novelty Axe":              { img: "assets/novelty_axe.png",            color: "#ffaa00" },
-    "Dragonhide Anchor":              { img: "assets/dragonhide_anchor.png",            color: "#8a2be2" },
-    "Void":          { img: "assets/void.png",        color: "#ff00ff" },
+    "Overall":           { img: "",                             color: "var(--gold)" },
+    "Emerald":           { img: "assets/emerald.png",          color: "#1a7a1a" },
+    "Emerald KB":        { img: "assets/emerald_kb.png",       color: "#00e5b0" },
+    "Dragonhide KB":     { img: "assets/dragonhide_kb.png",    color: "#ff6a00" },
+    "Manhunt":           { img: "assets/manhunt.png",          color: "#ff1a6b" },
+    "Diamond":           { img: "assets/diamond.png",          color: "#00c8ff" },
+    "Novelty Axe":       { img: "assets/novelty_axe.png",      color: "#ffaa00" },
+    "Dragonhide Anchor": { img: "assets/dragonhide_anchor.png",color: "#8a2be2" },
+    "Void":              { img: "assets/void.png",             color: "#ff00ff" },
 };
 
-/**
- * REGION_MAP
- * key   → short code used in player data  (e.g. "NA")
- * label → full name shown in tag tooltip
- * color → hex / rgb used for tag border + text, and CSS variable --reg-<key.toLowerCase()>
- *
- * To add a region: just add a new entry.
- */
 const REGION_MAP = {
     "NA": { label: "North America",  color: "#3498db" },
     "SA": { label: "South America",  color: "#00ff88" },
@@ -126,386 +156,847 @@ const REGION_MAP = {
     "AF": { label: "Africa",         color: "#00d4ff" },
 };
 
-/**
- * DEVICE_MAP
- * Same shape as REGION_MAP.
- * To add a device: just add a new entry. Nothing else needed.
- */
 const DEVICE_MAP = {
     "MK": { label: "Mouse & Keyboard", color: "#00ffff"  },
     "MB": { label: "Mobile",           color: "#ff7f50"  },
-    "CT": { label: "Controller",       color: "#b044ff"  }, // violet (distinct from MK cyan)
+    "CT": { label: "Controller",       color: "#b044ff"  },
     "TP": { label: "Touchpad",         color: "#ff00aa"  },
 };
 
 /* ═══════════════════════════════════════════════════════════════
-   RUNTIME — no need to edit below this line
+   STATE
    ═══════════════════════════════════════════════════════════════ */
 
-let DATA = {};
-let CURRENT_TAB = 'rankings';
+let DATA        = {};
+let CURRENT_TAB = 'home';
 let CURRENT_KIT = 'Overall';
+let SHOW_ALL    = false;
+const PREVIEW   = 2; // rows shown below podium (top 3 podium + 2 = top 5 total)
 
 const PTS = { "HT1":50,"LT1":40,"HT2":30,"LT2":20,"HT3":12,"LT3":8,"HT4":5,"LT4":3,"HT5":2,"LT5":1 };
 
-/**
- * Inject CSS variables + tag rules for every region and device entry.
- * Called once on startup so style.css never needs manual color entries.
- */
+/* skin HEAD-check cache: name → true|false */
+const skinCache = {};
 
-function setTheme(color) {
-    const root = document.documentElement;
+const DEFAULT_SKIN = 'assets/mtctiers_default_skin.png';
 
-    root.style.setProperty('--theme', color);
-
-    const r = parseInt(color.slice(1, 3), 16);
-    const g = parseInt(color.slice(3, 5), 16);
-    const b = parseInt(color.slice(5, 7), 16);
-
-    root.style.setProperty('--theme-rgb', `${r}, ${g}, ${b}`);
+async function hasSkin(name) {
+    if (name in skinCache) return skinCache[name];
+    try {
+        const r = await fetch(`assets/${name.toLowerCase()}.png`, { method: 'HEAD' });
+        skinCache[name] = r.ok;
+    } catch { skinCache[name] = false; }
+    return skinCache[name];
 }
 
+// Returns the skin src for a player — their own if it exists, otherwise the default
+function skinSrc(name) {
+    return (skinCache[name] ? `assets/${name.toLowerCase()}.png` : DEFAULT_SKIN);
+}
+
+async function prewarmSkins(names) {
+    await Promise.all(names.map(hasSkin));
+}
+
+/* ─── Typing animation ──────────────────────────────────── */
+function typeText(el, text, duration=1000) {
+    el.textContent = '';
+    const chars = text.split('');
+    const interval = duration / chars.length;
+    let i = 0;
+    const tick = setInterval(() => {
+        el.textContent += chars[i++];
+        if (i >= chars.length) clearInterval(tick);
+    }, interval);
+}
+
+/* ─── Theme ─────────────────────────────────────────────── */
 function buildThemeVars() {
     let css = ":root {\n";
-
-    for (const [code, { color }] of Object.entries(REGION_MAP))
-        css += `  --reg-${code.toLowerCase()}: ${color};\n`;
-
-    for (const [code, { color }] of Object.entries(DEVICE_MAP))
-        css += `  --dev-${code.toLowerCase()}: ${color};\n`;
-
+    for (const [c,{color}] of Object.entries(REGION_MAP)) css += `  --reg-${c.toLowerCase()}: ${color};\n`;
+    for (const [c,{color}] of Object.entries(DEVICE_MAP))  css += `  --dev-${c.toLowerCase()}: ${color};\n`;
     css += "}\n";
-
-    // .tag-reg-xx  and  .tag-dev-xx  rules
-    for (const [code] of Object.entries(REGION_MAP)) {
-        const v = `var(--reg-${code.toLowerCase()})`;
-        css += `.tag-reg-${code.toLowerCase()} { color:${v}; border-color:${v} !important; }\n`;
-    }
-    for (const [code] of Object.entries(DEVICE_MAP)) {
-        const v = `var(--dev-${code.toLowerCase()})`;
-        css += `.tag-dev-${code.toLowerCase()} { color:${v}; border-color:${v} !important; }\n`;
-    }
-
-    const el = document.createElement('style');
-    el.textContent = css;
-    document.head.appendChild(el);
+    for (const [c] of Object.entries(REGION_MAP)) { const v=`var(--reg-${c.toLowerCase()})`; css+=`.tag-reg-${c.toLowerCase()}{color:${v};border-color:${v}!important}\n`; }
+    for (const [c] of Object.entries(DEVICE_MAP))  { const v=`var(--dev-${c.toLowerCase()})`; css+=`.tag-dev-${c.toLowerCase()}{color:${v};border-color:${v}!important}\n`; }
+    const el=document.createElement('style'); el.textContent=css; document.head.appendChild(el);
 }
 
-// Function to play the button sound
+/* ─── Audio ─────────────────────────────────────────────── */
 function playBtnSound() {
-    const audio = new Audio('sounds/button.mp3');
-    audio.volume = 0.5; // Optional: Adjust volume from 0.0 to 1.0
-    audio.play().catch(e => console.log("Audio play blocked by browser"));
+    const a=new Audio('sounds/button.mp3'); a.volume=0.5; a.play().catch(()=>{});
 }
 
+/* ─── Tags ──────────────────────────────────────────────── */
 function getTags(name) {
-    const p = DATA.Players?.find(x => x.name === name) || { region: "?", device: "?" };
-    const reg = REGION_MAP[p.region];
-    const dev = DEVICE_MAP[p.device];
+    const p = DATA.Players?.find(x=>x.name===name) || {region:"?",device:"?"};
+    const reg=REGION_MAP[p.region]; const dev=DEVICE_MAP[p.device];
     return `<div style="margin-top:5px;">
-        <div class="tag-wrap ${reg ? 'has-hover' : ''}">
+        <div class="tag-wrap ${reg?'has-hover':''}">
             <span class="tag tag-reg-${p.region.toLowerCase()}">${p.region}</span>
-            ${reg ? `<div class="tag-popup">${reg.label}</div>` : ''}
+            ${reg?`<div class="tag-popup">${reg.label}</div>`:''}
         </div>
-        <div class="tag-wrap ${dev ? 'has-hover' : ''}">
+        <div class="tag-wrap ${dev?'has-hover':''}">
             <span class="tag tag-dev-${p.device.toLowerCase()}">${p.device}</span>
-            ${dev ? `<div class="tag-popup">${dev.label}</div>` : ''}
+            ${dev?`<div class="tag-popup">${dev.label}</div>`:''}
         </div>
     </div>`;
 }
 
+/* ─── Load data ─────────────────────────────────────────── */
 async function load() {
     buildThemeVars();
+    populateFilterDropdowns();
     try {
         const r = await fetch(`data/rankings.json?v=${Date.now()}`);
         DATA = await r.json();
         let totals = {};
-
-        // calculate points from tiers
         for (let k in DATA) {
-            if (k !== "Overall" && k !== "Players") {
-                for (let t in DATA[k]) {
-                    DATA[k][t].forEach(p => {
-                        totals[p] = (totals[p] || 0) + (PTS[t.replace('R', '')] || 0);
-                    });
-                }
-            }
+            if (k==="Overall"||k==="Players") continue;
+            for (let t in DATA[k]) DATA[k][t].forEach(p=>{ totals[p]=(totals[p]||0)+(PTS[t.replace('R','')]||0); });
         }
-
-        // ✅ ADD ALL PLAYERS WITH 0 IF NOT RANKED
-        if (DATA.Players) {
-            DATA.Players.forEach(p => {
-                if (!(p.name in totals)) {
-                    totals[p.name] = 0;
-                }
-            });
-        }
-
-        DATA["Overall"] = totals;
+        if (DATA.Players) DATA.Players.forEach(p=>{ if(!(p.name in totals)) totals[p.name]=0; });
         DATA["Overall"] = totals;
         buildKitBar();
-        render("Overall");
-    } catch (e) { console.error("Could not load rankings.json", e); }
+        CURRENT_TAB='home';
+        await renderOverall();
+    } catch(e) { console.error("Could not load rankings.json",e); }
 }
 
+/* ─── Kit bar ───────────────────────────────────────────── */
 function buildKitBar() {
-    const bar = document.getElementById('kitBar');
-    bar.innerHTML = "";
-
-    Object.entries(KIT_MAP).forEach(([name, { img, color }]) => {
-        const btn = document.createElement('button');
-        const isActive = name === 'Overall';
-        btn.className = `kit-btn ${isActive ? 'active' : ''}`;
-        // --kit-active-color drives the border glow on .kit-btn.active
-        btn.style.setProperty('--kit-active-color', color);
-        // Text is always this kit's unique color; inactive is just faded
-        btn.style.color   = color;
-        btn.style.opacity = isActive ? '1' : '0.4';
-        btn.innerHTML = (img ? `<img src="${img}" style="width:16px; vertical-align:middle;">` : "") + name.toUpperCase();
-        btn.onclick = () => {
+    const bar=document.getElementById('kitBar'); bar.innerHTML="";
+    Object.entries(KIT_MAP).forEach(([name,{img,color}])=>{
+        const btn=document.createElement('button');
+        const active=name==='Overall';
+        btn.className=`kit-btn ${active?'active':''}`;
+        btn.style.setProperty('--kit-active-color',color);
+        btn.style.color=color; btn.style.opacity=active?'1':'0.4';
+        btn.innerHTML=(img?`<img src="${img}" style="width:16px;vertical-align:middle;">`:'') + name.toUpperCase();
+        btn.onclick=()=>{
             playBtnSound();
-            if (CURRENT_TAB !== 'rankings') return;
-            document.querySelectorAll('.kit-btn').forEach(b => { b.classList.remove('active'); b.style.opacity = '0.4'; });
-            btn.classList.add('active');
-            btn.style.opacity = '1';
-            CURRENT_KIT = name;
-            render(name);
+            if(CURRENT_TAB!=='rankings' && CURRENT_TAB!=='home') return;
+            document.querySelectorAll('.kit-btn').forEach(b=>{b.classList.remove('active');b.style.opacity='0.4';});
+            btn.classList.add('active'); btn.style.opacity='1';
+            CURRENT_KIT=name;
+            setUrl({kit:name==='Overall'?'':name, player:''});
+            if(name==='Overall') renderOverall(); else renderKit(name);
         };
         bar.appendChild(btn);
     });
 }
 
-function render(kit) {
-    if (CURRENT_TAB !== 'rankings') return;
-    const activeColor = KIT_MAP[kit]?.color || 'var(--gold)';
-    const lbl = document.getElementById('viewLabel');
-    lbl.innerText = kit.toUpperCase();
-    lbl.style.color = activeColor;
-    const out = document.getElementById('displayList');
-    out.innerHTML = "";
+/* ─── Filter dropdowns ──────────────────────────────────── */
+function populateFilterDropdowns() {
+    const ks=document.getElementById('filterKit');
+    Object.keys(KIT_MAP).forEach(k=>{ if(k==='Overall') return; const o=document.createElement('option'); o.value=k; o.textContent=k.toUpperCase(); ks.appendChild(o); });
+    const rs=document.getElementById('filterRegion');
+    Object.entries(REGION_MAP).forEach(([code,{label}])=>{ const o=document.createElement('option'); o.value=code; o.textContent=`${code} — ${label}`; rs.appendChild(o); });
+    const ds=document.getElementById('filterDevice');
+    Object.entries(DEVICE_MAP).forEach(([code,{label}])=>{ const o=document.createElement('option'); o.value=code; o.textContent=`${code} — ${label}`; ds.appendChild(o); });
+}
 
-    if (kit !== "Overall" && (!DATA[kit] || Object.keys(DATA[kit]).length === 0)) {
-        out.innerHTML = `
-            <div class="empty-state">
-                <h2>NO RANKED PLAYERS</h2>
-            </div>
-        `;
-        return;
-    }
-
-    if (kit !== "Overall" && (!DATA[kit] || Object.keys(DATA[kit]).length === 0)) {
-        out.innerHTML = `<h2 style="font-family:'MultiCraftFont'; color:#444; margin-top:50px;">NO RANKED PLAYERS</h2>`;
-        return;
-    }
-
-    if (kit === "Overall") {
-        Object.entries(DATA.Overall).sort((a, b) => b[1] - a[1]).forEach(([name, pts], i) => {
-            out.innerHTML += `<div class="tier-card clickable" onclick="openProfile('${name}')">
-                <div style="display:flex; justify-content:space-between; align-items:center;">
-                    <div>
-                        <b style="color:var(--purple); margin-right:6px; font-size:1rem;">#${i + 1}</b>
-                        <span style="font-weight:bold; font-size:1rem;">${name}</span>
-                        ${getTags(name)}
-                    </div>
-                    <b style="color:var(--gold); font-size:1rem;">${pts} PTS</b>
-                </div>
-            </div>`;
-        });
+function getFilters() {
+    return {
+        kit:     document.getElementById('filterKit').value,
+        region:  document.getElementById('filterRegion').value,
+        device:  document.getElementById('filterDevice').value,
+        retired: document.getElementById('filterRetired').value,
+    };
+}
+function applyFilters()  {
+    if(CURRENT_KIT && CURRENT_KIT!=='Overall') {
+        renderKit(CURRENT_KIT);
     } else {
-        const grid = document.createElement('div');
-        grid.style.cssText = "display:flex; gap:20px; flex-wrap:wrap; justify-content:center;";
+        if(CURRENT_TAB!=='rankings') { SHOW_ALL=false; document.getElementById('kitBar').style.display='none'; }
+        renderOverall();
+    }
+}
+function resetFilters()  {
+    ['filterKit','filterRegion','filterDevice','filterRetired'].forEach(id=>document.getElementById(id).value='');
+    if(CURRENT_KIT && CURRENT_KIT!=='Overall') {
+        renderKit(CURRENT_KIT);
+    } else {
+        if(CURRENT_TAB!=='rankings') { SHOW_ALL=false; document.getElementById('kitBar').style.display='none'; }
+        renderOverall();
+    }
+}
+function toggleShowMore(){
+    switchTab('rankings');
+}
 
-        ["T1","T2","T3","T4","T5"].forEach(lvl => {
-            let col = `<div style="min-width:200px;">
-                <div style="color:var(--purple); border-bottom:1px solid var(--border); margin-bottom:10px; text-align:center; font-family:'MultiCraftFont'; font-size:0.9rem;">${lvl}</div>`;
-            let has = false;
+/* ─── Build filtered sorted list ───────────────────────── */
+function buildFilteredOverall() {
+    const {kit,region,device,retired}=getFilters();
 
-            for (let t in DATA[kit]) {
-                if (!t.includes(lvl)) continue;
-                DATA[kit][t].forEach(name => {
-                    has = true;
-                    const isR = t.startsWith('R');
-                    const label = isR ? 'Retired ' + t.substring(1) : t;
-                    const labelColor = isR ? 'var(--grey)' : 'var(--gold)';
-                    col += `<div class="tier-card clickable" style="width:200px; padding:12px;" onclick="openProfile('${name}')">
-                        <span style="font-size:0.9rem; font-weight:bold;">${name}</span>
-                        ${getTags(name)}
-                        <div style="font-size:0.6rem; color:${labelColor}; margin-top:5px; font-weight:bold;">${label}</div>
-                    </div>`;
+    let scoredMap = {};
+
+    const playerStatus = {};
+    for (let k in DATA) {
+        if (k==='Overall'||k==='Players') continue;
+        for (let t in DATA[k]) {
+            const isR = t.startsWith('R');
+            DATA[k][t].forEach(name => {
+                if (!playerStatus[name]) playerStatus[name] = {active:false, retired:false};
+                if (isR) playerStatus[name].retired = true;
+                else     playerStatus[name].active  = true;
+            });
+        }
+    }
+
+    if (!retired) {
+        scoredMap = { ...DATA.Overall };
+    } else {
+        for (let k in DATA) {
+            if (k==='Overall'||k==='Players') continue;
+            for (let t in DATA[k]) {
+                const isR = t.startsWith('R');
+                if (retired==='active'  &&  isR) continue;
+                if (retired==='retired' && !isR) continue;
+                const pts = PTS[t.replace('R','')];
+                if (!pts) continue;
+                DATA[k][t].forEach(name => {
+                    scoredMap[name] = (scoredMap[name]||0) + pts;
                 });
             }
-            if (has) { col += `</div>`; grid.innerHTML += col; }
-        });
-        out.appendChild(grid);
+        }
+        if (DATA.Players) DATA.Players.forEach(p=>{ if(!(p.name in scoredMap)) scoredMap[p.name]=0; });
     }
+
+    let entries = Object.entries(scoredMap);
+
+    if (region||device) {
+        entries=entries.filter(([name])=>{
+            const p=DATA.Players?.find(x=>x.name===name);
+            if(!p) return false;
+            if(region&&p.region!==region) return false;
+            if(device&&p.device!==device) return false;
+            return true;
+        });
+    }
+
+    if (retired==='active') {
+        entries=entries.filter(([name])=>{
+            const s=playerStatus[name];
+            return s && s.active && !s.retired;
+        });
+    } else if (retired==='retired') {
+        entries=entries.filter(([name])=>{
+            const s=playerStatus[name];
+            return s && s.retired && !s.active;
+        });
+    }
+
+    if (retired) {
+        entries=entries.filter(([,pts])=>pts>0);
+    }
+
+    if (kit) {
+        const kitScores={};
+        if (DATA[kit]) {
+            for (let t in DATA[kit]) {
+                const isRetiredTier=t.startsWith('R');
+                if (retired==='active'  &&  isRetiredTier) continue;
+                if (retired==='retired' && !isRetiredTier) continue;
+                const pts=PTS[t.replace('R','')];
+                if (!pts) continue;
+                DATA[kit][t].forEach(name=>{
+                    if (!kitScores[name]||kitScores[name].pts<pts)
+                        kitScores[name]={pts,tier:t};
+                });
+            }
+        }
+        entries=entries
+            .filter(([name])=>kitScores[name])
+            .map(([name])=>[name,kitScores[name].pts,kitScores[name].tier]);
+        entries.sort((a,b)=>b[1]-a[1]);
+        return {entries,kitMode:true,kitName:kit};
+    }
+
+    entries.sort((a,b)=>b[1]-a[1]);
+    return {entries,kitMode:false,kitName:null};
 }
 
-async function switchTab(tab) {
-    playBtnSound();
-    CURRENT_TAB = tab;
-    document.querySelectorAll('.nav-link').forEach(n => n.classList.remove('active'));
-    document.getElementById('nav-' + tab).classList.add('active');
-    const out = document.getElementById('displayList');
-    const kb  = document.getElementById('kitBar');
-    const lb  = document.getElementById('viewLabel');
-    out.innerHTML = "";
+/* ─── Rank Titles ───────────────────────────────────────── */
+function getRankTitle(pts, rank) {
+    if (rank === 1 || pts >= 300) return { title: "Combat Grandmaster", color: "#ffd700" };
+    if (rank <= 3 || pts >= 200)  return { title: "Combat Master",      color: "#00eeff" };
+    if (pts >= 150)               return { title: "Combat Ace",         color: "#ff6a00" };
+    if (pts >= 50)                return { title: "Combat Specialist",  color: "#b044ff" };
+    if (pts >= 20)                return { title: "Combat Cadet",       color: "#00ff88" };
+    if (pts >= 10)                return { title: "Combat Novice",      color: "#ff7f50" };
+    return                               { title: "Rookie",             color: "#888"    };
+}
 
-    if (tab === 'rankings') {
-        kb.style.display = "flex";
-        render(CURRENT_KIT);
+/* ─── Title badge HTML helper ───────────────────────────── */
+function titleBadgeHtml(pts, rank) {
+    const {title, color} = getRankTitle(pts, rank);
+    return `<span style="font-family:'MultiCraftFont',monospace;font-size:0.45rem;color:${color};border:1px solid ${color};border-radius:20px;padding:2px 8px;letter-spacing:1px;background:${color}18;white-space:nowrap;">${title}</span>`;
+}
+
+/* ─── Render Overall ────────────────────────────────────── */
+async function renderOverall() {
+    if(CURRENT_TAB!=='rankings' && CURRENT_TAB!=='home') return;
+
+    const lbl=document.getElementById('viewLabel');
+    const isHome = CURRENT_TAB==='home';
+    lbl.style.display = isHome ? 'none' : '';
+    if(!isHome) { lbl.innerText='OVERALL'; lbl.style.color=KIT_MAP['Overall'].color; }
+
+    document.getElementById('filterBar').style.display= isHome ? 'none' : 'flex';
+    document.getElementById('topPlayersTitle').style.display= isHome ? 'block' : 'none';
+    if(!isHome) document.getElementById('filterKit').style.display='';
+    document.getElementById('kitBar').style.display= (!isHome && SHOW_ALL) ? 'flex' : 'none';
+
+    const dl=document.getElementById('displayList');
+    dl.innerHTML=''; dl.classList.add('overall-mode');
+
+    const podium=document.getElementById('podiumWrap');
+    podium.innerHTML='';
+
+    const smBtn=document.getElementById('showMoreBtn');
+
+    const {entries,kitMode}=buildFilteredOverall();
+
+    if(entries.length===0) {
+        podium.style.display='none'; smBtn.style.display='none';
+        dl.innerHTML=`<div class="empty-state"><h2>NO PLAYERS MATCH FILTERS</h2></div>`;
+        return;
+    }
+
+    if (SHOW_ALL) {
+        podium.style.display='none';
     } else {
-        kb.style.display = "none";
-        lb.innerText = tab === 'hof' ? "HALL OF FAME" : "TIER TESTERS";
-        try {
-            const r    = await fetch(`data/${tab}.json?v=${Date.now()}`);
-            const data = await r.json();
-            data.forEach(i => {
-                const hasProf = (i.name in DATA.Overall);
-                out.innerHTML += `<div class="tier-card ${hasProf ? 'clickable' : ''}" ${hasProf ? `onclick="openProfile('${i.name}')"` : ''}>
-                    <b style="color:var(--purple); font-family:'MultiCraftFont'; font-size:1rem;">${i.name}</b>
-                    ${i.discord ? `<div style="color:var(--purple); font-size:0.85rem; font-weight:bold; margin-top:5px;">Discord: ${i.discord}</div>` : ''}
-                    <p style="font-size:0.75rem; color:#bbb; margin-top:8px;">${i.description || ''}</p>
+        const top3=entries.slice(0,3);
+        await prewarmSkins(top3.map(e=>e[0]));
+        podium.style.display='flex';
+        for(let i=0;i<top3.length;i++) {
+            const [name,pts,tier]=top3[i]; const rank=i+1;
+            const rankColors=['var(--gold)','#aaa','#cd7f32'];
+            // CHANGE #2: title badge under rank number on home podium
+            const {title: pTitle, color: pColor} = getRankTitle(pts, rank);
+            const card=document.createElement('div');
+            card.className=`podium-card rank-${rank}`;
+            card.onclick=()=>{ playBtnSound(); openProfile(name); };
+            card.innerHTML=`
+                <div class="podium-name">${name}</div>
+                <div class="podium-skin-wrap"><img src="${skinSrc(name)}" alt="${name}"></div>
+                <div class="podium-platform">
+                    <div class="podium-pts-badge" style="border-color:${rankColors[i]};color:${rankColors[i]};">${pts} PTS</div>
+                    <span class="podium-rank-num">${rank}</span>
+                </div>
+                <div style="font-family:'MultiCraftFont',monospace;font-size:0.45rem;color:${pColor};border:1px solid ${pColor};border-radius:20px;padding:2px 8px;margin-top:6px;letter-spacing:1px;background:${pColor}18;text-align:center;">${pTitle}</div>
+            `;
+            card.style.animation = `podiumDrop 0.5s cubic-bezier(0.22,1,0.36,1) ${i*0.12}s both`;
+            podium.appendChild(card);
+        }
+    }
+
+    /* ── Rows ── */
+    if(isHome) {
+        document.getElementById('topPlayersTitle').style.display='block';
+
+        const homeList = document.createElement('div');
+        homeList.id = 'overallList';
+        const homeRows = entries.slice(3, 3+PREVIEW);
+        await prewarmSkins(homeRows.map(e=>e[0]));
+        for(let i=0;i<homeRows.length;i++) {
+            const [name,pts]=homeRows[i]; const rank=i+4;
+            // CHANGE #3: title under skin and name on home rows
+            const row=document.createElement('div');
+            row.className='ol-row';
+            row.onclick=()=>{ playBtnSound(); openProfile(name); };
+            row.style.animationDelay=`${i*0.08}s`;
+            row.innerHTML=`
+                <span class="ol-rank">${rank}</span>
+                <div class="ol-skin"><img src="${skinSrc(name)}" alt="${name}"></div>
+                <div class="ol-name-block">
+                    <div class="ol-name" style="font-family:'MultiCraftFont',monospace;">${name}</div>
+                    ${getTags(name)}
+                    <div style="margin-top:4px;">${titleBadgeHtml(pts, rank)}</div>
+                </div>
+                <div class="ol-pts"><span class="ol-pts-icon"></span>${pts} PTS</div>
+            `;
+            homeList.appendChild(row);
+        }
+        dl.appendChild(homeList);
+
+        if(entries.length > 3+PREVIEW) {
+            const flDiv = document.createElement('div');
+            flDiv.style.cssText = "font-family:'MultiCraftFont',monospace;font-size:0.65rem;color:#555;cursor:pointer;margin-top:10px;margin-bottom:10px;letter-spacing:1px;text-align:center;width:100%;transition:color 0.2s;";
+            flDiv.textContent = 'FULL LEADERBOARD ▶';
+            flDiv.onmouseenter = () => flDiv.style.color='var(--purple)';
+            flDiv.onmouseleave = () => flDiv.style.color='#555';
+            flDiv.onclick = () => switchTab('rankings');
+            dl.appendChild(flDiv);
+        }
+        document.getElementById('showMoreBtn').style.display='none';
+        return;
+    }
+
+    const listWrap=document.createElement('div'); listWrap.id='overallList';
+    const rowEntries = SHOW_ALL ? entries : entries.slice(3, 3+PREVIEW);
+    await prewarmSkins(rowEntries.map(e=>e[0]));
+
+    for(let i=0;i<rowEntries.length;i++) {
+        const [name,pts,tier]=rowEntries[i]; const rank= SHOW_ALL ? i+1 : i+4;
+        const isFullLB = SHOW_ALL;
+
+        const row=document.createElement('div');
+        row.className='ol-row' + (isFullLB ? ' ol-row-full' : '');
+        row.onclick=()=>{ playBtnSound(); openProfile(name); };
+
+        if (isFullLB) {
+            const p = DATA.Players?.find(x=>x.name===name);
+            const regCode = p?.region || '?';
+            const regColor = REGION_MAP[regCode]?.color || '#555';
+            const devCode = p?.device || '?';
+            const devColor = DEVICE_MAP[devCode]?.color || '#555';
+
+            let kitIconsHtml = '<div class="ol-kit-icons">';
+            Object.entries(KIT_MAP).forEach(([kname, {img, color}]) => {
+                if (kname === 'Overall') return;
+                let tierLabel = '';
+                let tierColor = '#2a2a2a';
+                if (DATA[kname]) {
+                    for (let t in DATA[kname]) {
+                        if (DATA[kname][t].includes(name)) {
+                            const isR = t.startsWith('R');
+                            tierLabel = isR ? t.slice(1) : t;
+                            tierColor = isR ? '#444' : color;
+                            break;
+                        }
+                    }
+                }
+                kitIconsHtml += `<div class="ol-kit-icon" style="border-color:${tierColor};opacity:${tierLabel?'1':'0.25'};">
+                    ${img ? `<img src="${img}" style="width:20px;height:20px;image-rendering:pixelated;display:block;">` : ''}
+                    <span class="ol-kit-icon-label" style="color:${tierColor};font-size:0.5rem;">${tierLabel||''}</span>
                 </div>`;
             });
-        } catch (e) { console.error(`Could not load ${tab}.json`, e); }
+            kitIconsHtml += '</div>';
+
+            // CHANGE #3: title badge under name in full LB rows too
+            row.innerHTML = `
+                <span class="ol-rank">${rank}</span>
+                <div class="ol-skin"><img src="${skinSrc(name)}" alt="${name}"></div>
+                <div class="ol-name-block">
+                    <div class="ol-name" style="font-family:'MultiCraftFont',monospace;">${name}</div>
+                    <div style="margin-top:4px;">${titleBadgeHtml(pts, rank)}</div>
+                </div>
+                <div class="tag-wrap has-hover" style="position:relative;">
+                    <span class="ol-region-badge" style="background:${regColor}22;border:1px solid ${regColor};color:${regColor};cursor:help;">${regCode}</span>
+                    <div class="tag-popup" style="border-color:${regColor};">${REGION_MAP[regCode]?.label||regCode}</div>
+                </div>
+                <div class="tag-wrap has-hover" style="position:relative;">
+                    <span class="ol-region-badge" style="background:${devColor}22;border:1px solid ${devColor};color:${devColor};cursor:help;">${devCode}</span>
+                    <div class="tag-popup" style="border-color:${devColor};">${DEVICE_MAP[devCode]?.label||devCode}</div>
+                </div>
+                ${kitIconsHtml}
+                <div class="ol-pts"><span class="ol-pts-icon"></span>${pts} PTS</div>
+            `;
+        } else {
+            // CHANGE #3: title badge under name + tags in preview rows
+            row.innerHTML = `
+                <span class="ol-rank">${rank}</span>
+                <div class="ol-skin"><img src="${skinSrc(name)}" alt="${name}"></div>
+                <div class="ol-name-block">
+                    <div class="ol-name">${name}</div>
+                    ${getTags(name)}
+                    <div style="margin-top:4px;">${titleBadgeHtml(pts, rank)}</div>
+                </div>
+                ${kitMode&&tier?`<span class="ol-tier-badge">${tier.startsWith('R')?'Retired '+tier.slice(1):tier}</span>`:''}
+                <div class="ol-pts"><span class="ol-pts-icon"></span>${pts} PTS</div>
+            `;
+        }
+
+        row.style.animationDelay = `${i*0.06}s`;
+        listWrap.appendChild(row);
+    }
+    dl.appendChild(listWrap);
+
+    if(!isHome && entries.length > 3+PREVIEW) {
+        smBtn.style.display='block';
+        smBtn.textContent=SHOW_ALL?'▲ SHOW LESS':'FULL LEADERBOARD ▶';
+    } else { smBtn.style.display='none'; }
+}
+
+/* ─── Render kit tab (non-Overall) ─────────────────────── */
+async function renderKit(kit) {
+    if(CURRENT_TAB!=='rankings' && CURRENT_TAB!=='home') return;
+    const {region,device,retired}=getFilters();
+    const color=KIT_MAP[kit]?.color||'var(--gold)';
+    const lbl=document.getElementById('viewLabel'); lbl.innerText=kit.toUpperCase(); lbl.style.color=color;
+    document.getElementById('filterBar').style.display='flex';
+    document.getElementById('filterKit').style.display='none';
+    document.getElementById('topPlayersTitle').style.display='none';
+    document.getElementById('podiumWrap').style.display='none';
+    document.getElementById('showMoreBtn').style.display='none';
+    const dl=document.getElementById('displayList'); dl.innerHTML=''; dl.classList.remove('overall-mode');
+
+    const kitPlayerStatus = {};
+    for (let k in DATA) {
+        if (k==='Overall'||k==='Players') continue;
+        for (let t in DATA[k]) {
+            const isR = t.startsWith('R');
+            DATA[k][t].forEach(name => {
+                if (!kitPlayerStatus[name]) kitPlayerStatus[name] = {active:false,retired:false};
+                if (isR) kitPlayerStatus[name].retired=true; else kitPlayerStatus[name].active=true;
+            });
+        }
+    }
+
+    function kitPlayerVisible(name) {
+        const p = DATA.Players?.find(x=>x.name===name);
+        if (region && (!p || p.region!==region)) return false;
+        if (device && (!p || p.device!==device)) return false;
+        if (retired==='active') {
+            const s=kitPlayerStatus[name]; if(!s||!s.active||s.retired) return false;
+        } else if (retired==='retired') {
+            const s=kitPlayerStatus[name]; if(!s||!s.retired||s.active) return false;
+        }
+        return true;
+    }
+
+    const allKitPlayers = [];
+    if(DATA[kit]) { for(let t in DATA[kit]) DATA[kit][t].forEach(n=>{ if(!allKitPlayers.includes(n)) allKitPlayers.push(n); }); }
+    await prewarmSkins(allKitPlayers);
+
+    const kitTop = [];
+    if (DATA[kit]) {
+        const tierOrder2 = ['HT1','RHT1','LT1','RLT1','HT2','RHT2','LT2','RLT2','HT3','RHT3','LT3','RLT3','HT4','RHT4','LT4','RLT4','HT5','RHT5','LT5','RLT5'];
+        for (const t of tierOrder2) {
+            if (DATA[kit][t]) DATA[kit][t].forEach(n => { if(kitTop.length<3 && kitPlayerVisible(n)) kitTop.push({name:n,tier:t}); });
+            if (kitTop.length>=3) break;
+        }
+    }
+
+    if (kitTop.length > 0) {
+        const mp = document.createElement('div');
+        mp.id = 'podiumWrap2';
+        mp.style.cssText = 'display:flex;justify-content:center;align-items:flex-end;gap:16px;margin-bottom:28px;padding:0 12px;';
+        for (let i = 0; i < kitTop.length; i++) {
+            const {name, tier} = kitTop[i];
+            const rank = i+1;
+            const rankColors = ['var(--gold)','#aaa','#cd7f32'];
+            const card = document.createElement('div');
+            card.className = `podium-card rank-${rank}`;
+            card.onclick = () => { playBtnSound(); openProfile(name); };
+            card.innerHTML = `
+                <div class="podium-name">${name}</div>
+                <div class="podium-skin-wrap"><img src="${skinSrc(name)}" alt="${name}"></div>
+                <div class="podium-platform">
+                    <div class="podium-pts-badge" style="border-color:${rankColors[i]};color:${rankColors[i]};">${tier}</div>
+                    <span class="podium-rank-num">${rank}</span>
+                </div>
+            `;
+            card.style.animation = `podiumDrop 0.5s cubic-bezier(0.22,1,0.36,1) ${i*0.12}s both`;
+            mp.appendChild(card);
+        }
+        dl.appendChild(mp);
+    }
+
+    const grid=document.createElement('div');
+    grid.style.cssText="display:flex;gap:20px;flex-wrap:wrap;justify-content:center;margin-top:24px;";
+    let anyPlayers=false;
+
+    const TIER_ORDER = ['HT1','RHT1','LT1','RLT1','HT2','RHT2','LT2','RLT2','HT3','RHT3','LT3','RLT3','HT4','RHT4','LT4','RLT4','HT5','RHT5','LT5','RLT5'];
+
+    if(DATA[kit]) {
+        ["T1","T2","T3","T4","T5"].forEach(lvl=>{
+            const lvlNum = lvl.slice(1);
+            const orderedTiers = TIER_ORDER.filter(t => {
+                const base = t.startsWith('R') ? t.slice(1) : t;
+                return base.slice(-1) === lvlNum;
+            });
+
+            let col=`<div style="min-width:200px;">
+                <div style="color:var(--purple);border-bottom:1px solid var(--border);margin-bottom:10px;text-align:center;font-family:'MultiCraftFont';font-size:0.9rem;">${lvl}</div>`;
+            let has=false;
+            orderedTiers.forEach(t=>{
+                if(!DATA[kit][t]) return;
+                DATA[kit][t].forEach(name=>{
+                    if(!kitPlayerVisible(name)) return;
+                    has=true; anyPlayers=true;
+                    const isR=t.startsWith('R');
+                    const label=isR?'Retired '+t.substring(1):t;
+                    const lc=isR?'var(--grey)':'var(--gold)';
+                    col+=`<div class="tier-card clickable" style="width:200px;padding:12px;display:flex;align-items:center;gap:10px;" onclick="openProfile('${name}')">
+                        <img src="${skinSrc(name)}" alt="${name}" style="width:36px;height:36px;image-rendering:pixelated;object-fit:cover;object-position:top;transform:scale(1.3);transform-origin:top;flex-shrink:0;">
+                        <div>
+                            <div style="font-size:0.9rem;font-weight:bold;">${name}</div>
+                            ${getTags(name)}
+                            <div style="font-size:0.6rem;color:${lc};margin-top:4px;font-weight:bold;">${label}</div>
+                        </div>
+                    </div>`;
+                });
+            });
+            if(has){ col+=`</div>`; grid.innerHTML+=col; }
+        });
+    }
+
+    if(!anyPlayers) {
+        dl.innerHTML=`<div class="empty-state"><h2>NO RANKED PLAYERS</h2></div>`; return;
+    }
+    dl.appendChild(grid);
+}
+
+/* ─── Tab switch ────────────────────────────────────────── */
+async function switchTab(tab) {
+    playBtnSound();
+    CURRENT_TAB=tab;
+    document.querySelectorAll('.nav-link').forEach(n=>n.classList.remove('active'));
+    const navEl=document.getElementById('nav-'+tab);
+    if(navEl) navEl.classList.add('active');
+    const dl=document.getElementById('displayList');
+    dl.innerHTML=''; dl.classList.remove('overall-mode');
+    document.getElementById('podiumWrap').style.display='none';
+    document.getElementById('filterBar').style.display='none';
+    document.getElementById('showMoreBtn').style.display='none';
+
+    if(tab==='home') {
+        setUrl({tab:'', kit:'', player:''});
+        document.getElementById('kitBar').style.display='none';
+        SHOW_ALL=false;
+        CURRENT_KIT='Overall';
+        document.querySelectorAll('.kit-btn').forEach(b=>{b.classList.remove('active');b.style.opacity='0.4';});
+        const overallBtn=[...document.querySelectorAll('.kit-btn')].find(b=>b.textContent.trim()==='OVERALL');
+        if(overallBtn){overallBtn.classList.add('active');overallBtn.style.opacity='1';}
+        await renderOverall();
+    } else if(tab==='rankings') {
+        setUrl({tab:'rankings', kit:'', player:''});
+        SHOW_ALL=true;
+        document.getElementById('kitBar').style.display='flex';
+        document.getElementById('filterBar').style.display='flex';
+        document.getElementById('topPlayersTitle').style.display='none';
+        dl.innerHTML='';
+        if(CURRENT_KIT==='Overall') await renderOverall(); else await renderKit(CURRENT_KIT);
+    } else {
+        document.getElementById('kitBar').style.display='none';
+        setUrl({tab:tab, kit:'', player:''});
+        const lbl=document.getElementById('viewLabel');
+        lbl.innerText=tab==='hof'?"HALL OF FAME":"TIER TESTERS"; lbl.style.color='var(--gold)';
+        try {
+            const r=await fetch(`data/${tab}.json?v=${Date.now()}`);
+            const data=await r.json();
+            data.forEach(i=>{
+                const hasProf=(i.name in DATA.Overall);
+                dl.innerHTML+=`<div class="tier-card ${hasProf?'clickable':''}" ${hasProf?`onclick="openProfile('${i.name}')"`:''}">
+                    <b style="color:var(--purple);font-family:'MultiCraftFont';font-size:1rem;">${i.name}</b>
+                    ${i.discord?`<div style="color:var(--purple);font-size:0.85rem;font-weight:bold;margin-top:5px;">Discord: ${i.discord}</div>`:''}
+                    <p style="font-size:0.75rem;color:#bbb;margin-top:8px;">${i.description||''}</p>
+                </div>`;
+            });
+        } catch(e){ console.error(`Could not load ${tab}.json`,e); }
     }
 }
 
+/* ─── Confetti ──────────────────────────────────────────── */
+function fireConfetti() {
+    const colors = ['#ffd700','#fff','var(--theme)','#ff00ff','#00eeff','#ff6a00'];
+    const canvas = document.createElement('canvas');
+    canvas.style.cssText = 'position:fixed;inset:0;z-index:9999;pointer-events:none;';
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    document.body.appendChild(canvas);
+    const ctx = canvas.getContext('2d');
+    const pieces = Array.from({length:120}, () => ({
+        x: Math.random() * canvas.width,
+        y: -20 - Math.random() * 200,
+        r: Math.random() * 7 + 3,
+        color: colors[Math.floor(Math.random()*colors.length)],
+        vx: (Math.random()-0.5) * 4,
+        vy: Math.random() * 4 + 2,
+        spin: Math.random() * 0.3 - 0.15,
+        angle: Math.random() * Math.PI * 2,
+        shape: Math.random() > 0.5 ? 'rect' : 'circle',
+        w: Math.random() * 10 + 5,
+        h: Math.random() * 5 + 3,
+        alpha: 1,
+    }));
+    const start = performance.now();
+    const duration = 2800;
+    function draw(now) {
+        const elapsed = now - start;
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        pieces.forEach(p => {
+            p.x += p.vx; p.y += p.vy; p.vy += 0.08; p.angle += p.spin;
+            p.alpha = Math.max(0, 1 - (elapsed / duration) * 1.2);
+            ctx.globalAlpha = p.alpha;
+            ctx.fillStyle = p.color;
+            ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.angle);
+            if (p.shape === 'rect') {
+                ctx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+            } else {
+                ctx.beginPath(); ctx.arc(0, 0, p.r, 0, Math.PI*2); ctx.fill();
+            }
+            ctx.restore();
+        });
+        ctx.globalAlpha = 1;
+        if (elapsed < duration) requestAnimationFrame(draw);
+        else canvas.remove();
+    }
+    requestAnimationFrame(draw);
+
+    const modal = document.querySelector('.profile-modal-content');
+    modal.style.boxShadow = '0 0 40px rgba(255,215,0,0.6), 0 0 80px rgba(255,215,0,0.25)';
+}
+
+/* ─── Profile modal ─────────────────────────────────────── */
 function openProfile(name) {
     playBtnSound();
-    if (!(name in DATA.Overall)) return;
-    const sorted  = Object.entries(DATA.Overall).sort((a, b) => b[1] - a[1]);
-    const rankIdx = sorted.findIndex(x => x[0] === name);
+    if(!(name in DATA.Overall)) return;
+    const sorted=Object.entries(DATA.Overall).sort((a,b)=>b[1]-a[1]);
+    const rankIdx=sorted.findIndex(x=>x[0]===name);
+    const rankNum = rankIdx+1;
+    const rankPts = DATA.Overall[name];
+    const {title: rankTitle, color: rankTitleColor} = getRankTitle(rankPts, rankNum);
 
-    document.getElementById('pRank').innerText   = "RANK #" + (rankIdx + 1);
-    document.getElementById('pName').innerText   = name;
-    document.getElementById('pMeta').innerHTML   = getTags(name);
-    document.getElementById('pPoints').innerHTML = DATA.Overall[name] + ' <span class="profile-elo-label">PTS</span>';
+    // CHANGE #1: rank badge and title badge are already in the HTML as siblings in #pBadgeRow
+    document.getElementById('pRank').innerText = "RANK #" + rankNum;
+    const titleBadge = document.getElementById('pTitleBadge');
+    titleBadge.textContent = rankTitle;
+    titleBadge.style.color = rankTitleColor;
+    titleBadge.style.borderColor = rankTitleColor;
+    titleBadge.style.background = rankTitleColor + '18';
 
-    let ranked = [], unranked = [];
+    typeText(document.getElementById('pName'), name, 1000);
+    document.getElementById('pMeta').innerHTML=getTags(name);
 
-    Object.keys(KIT_MAP).forEach(k => {
-        if (k === "Overall") return;
-        let found = false, display = "", color = "var(--grey)";
-        const img = KIT_MAP[k]?.img;
+    const targetPts = DATA.Overall[name];
+    const pPoints = document.getElementById('pPoints');
+    pPoints.innerHTML='0 <span class="profile-elo-label">PTS</span>';
+    const duration = 1500;
+    const startTime = performance.now();
+    function countUp(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const eased = 1 - Math.pow(1 - progress, 3);
+        const current = Math.round(eased * targetPts);
+        pPoints.innerHTML = current + ' <span class="profile-elo-label">PTS</span>';
+        if (progress < 1) requestAnimationFrame(countUp);
+    }
+    requestAnimationFrame(countUp);
 
-        if (DATA[k]) {
-            for (let t in DATA[k]) {
-                if (DATA[k][t].includes(name)) {
-                    found = true;
-                    const isR = t.startsWith('R');
-                    display = isR ? 'Retired ' + t.substring(1) : t;
-                    color = isR ? 'var(--grey)' : 'var(--gold)';
-                    break;
+    let ranked=[],unranked=[];
+    Object.keys(KIT_MAP).forEach(k=>{
+        if(k==="Overall") return;
+        let found=false,display="",color="var(--grey)";
+        const img=KIT_MAP[k]?.img;
+        if(DATA[k]) {
+            for(let t in DATA[k]) {
+                if(DATA[k][t].includes(name)){
+                    found=true;
+                    const isR=t.startsWith('R');
+                    display=isR?'Retired '+t.substring(1):t;
+                    color=isR?'var(--grey)':'var(--gold)'; break;
                 }
             }
         }
-
-        const html = `<div class="p-kit-item">
+        const html=`<div class="p-kit-item">
             <div class="kit-popup" style="border-color:${color}">
-                <span style="color:${color}">${found ? display : "UNRANKED"}</span><br>
+                <span style="color:${color}">${found?display:"UNRANKED"}</span><br>
                 <span style="color:#666">${k}</span>
             </div>
-            <div class="p-kit-circle" style="border-color:${found ? color : '#222'}; opacity:${found ? '1' : '0.3'};">
-                ${img ? `<img src="${img}">` : ""}
+            <div class="p-kit-circle" style="border-color:${found?color:'#222'};opacity:${found?'1':'0.3'};">
+                ${img?`<img src="${img}">`:''}
             </div>
-            <div class="p-kit-tier-label" style="color:${color};">
-                ${found ? display : "—"}
-            </div>
+            <div class="p-kit-tier-label" style="color:${color};">${found?display:"—"}</div>
         </div>`;
+        if(found) ranked.push(html); else unranked.push(html);
+    });
+    const allTiers = [...ranked,...unranked];
+    document.getElementById('pTiers').innerHTML = allTiers.map((html,i) =>
+        html.replace('<div class="p-kit-item">', `<div class="p-kit-item" style="animation:kitCircleIn 0.4s ease-out ${i*0.05}s both;">`)
+    ).join('');
 
-        if (found) ranked.push(html);
-        else unranked.push(html);
+    const skinWrap=document.getElementById('pSkin');
+    const skinImg=document.getElementById('pSkinImg');
+    hasSkin(name).then(()=>{
+        skinImg.src=skinSrc(name); skinWrap.style.display='flex';
     });
 
-    document.getElementById('pTiers').innerHTML = [...ranked, ...unranked].join("");
-    document.getElementById('profileModal').style.display = 'flex';
+    setUrl({player:name}); document.getElementById('profileModal').style.display='flex';
+    if(rankIdx===0) fireConfetti();
 }
 
+/* ─── Shareable URLs ───────────────────────────────────── */
+async function handleUrlOnLoad() {
+    const p = new URLSearchParams(window.location.search);
+    const player = p.get('player');
+    const kit    = p.get('kit');
+    const tab    = p.get('tab');
+    if (player && DATA.Overall && player in DATA.Overall) {
+        openProfile(player);
+    } else if (tab === 'rankings') {
+        switchTab('rankings');
+    } else if (tab === 'hof' || tab === 'testers') {
+        switchTab(tab);
+    } else if (kit && kit !== 'Overall' && KIT_MAP[kit]) {
+        CURRENT_KIT = kit;
+        document.querySelectorAll('.kit-btn').forEach(b=>{b.classList.remove('active');b.style.opacity='0.4';});
+        const btn = [...document.querySelectorAll('.kit-btn')]
+            .find(b => b.textContent.trim() === kit.toUpperCase());
+        if (btn) { btn.classList.add('active'); btn.style.opacity='1'; }
+        document.getElementById('filterBar').style.display='none';
+        document.getElementById('showMoreBtn').style.display='none';
+        document.getElementById('kitBar').style.display='flex';
+        await renderKit(kit);
+    }
+}
+
+function copyProfileLink() {
+    const url = new URL(window.location.href);
+    const name = document.getElementById('pName').innerText;
+    url.searchParams.set('player', name);
+    navigator.clipboard.writeText(url.toString()).then(()=>{
+        const btn = document.getElementById('profileCopyBtn');
+        btn.textContent = '✓';
+        btn.style.borderColor = 'var(--purple)';
+        btn.style.color = 'var(--purple)';
+        setTimeout(()=>{ btn.textContent='⧉'; btn.style.borderColor=''; btn.style.color=''; }, 1500);
+    });
+}
+
+function setUrl(params) {
+    const u = new URL(window.location.href);
+    Object.entries(params).forEach(([k,v]) => v ? u.searchParams.set(k,v) : u.searchParams.delete(k));
+    window.history.replaceState({}, '', u);
+}
+
+/* ─── Search ────────────────────────────────────────────── */
 function handleSearch(val) {
-    const pop = document.getElementById('searchPopup');
-    if (!val) { pop.style.display = 'none'; return; }
-    const matches = Object.keys(DATA.Overall || {})
-        .filter(n => n.toLowerCase().includes(val.toLowerCase()))
-        .slice(0, 5);
-    pop.innerHTML = matches.map(m =>
-        `<div class="search-item" onclick="openProfile('${m}'); document.getElementById('searchPopup').style.display='none';">
-            <b>${m}</b> <span style="color:var(--purple); font-size:0.5rem;">VIEW PROFILE</span>
-        </div>`
-    ).join('') || "";
-    pop.style.display = matches.length ? 'block' : 'none';
+    const pop=document.getElementById('searchPopup');
+    if(!val){ pop.style.display='none'; return; }
+    const matches=Object.keys(DATA.Overall||{}).filter(n=>n.toLowerCase().includes(val.toLowerCase())).slice(0,5);
+    pop.innerHTML=matches.map(m=>`<div class="search-item" onclick="openProfile('${m}');document.getElementById('searchPopup').style.display='none';"><b>${m}</b><span style="color:var(--purple);font-size:0.5rem;">VIEW PROFILE</span></div>`).join('')||'';
+    pop.style.display=matches.length?'block':'none';
 }
 
-function openInfo() { 
-    playBtnSound();
-    document.getElementById('infoModal').style.display = 'flex'; 
-}
+function openInfo(){ playBtnSound(); document.getElementById('infoModal').style.display='flex'; }
 
-load();
-document.addEventListener('click', e => {
-    if (!e.target.closest('.search-wrap'))
-        document.getElementById('searchPopup').style.display = 'none';
-});
+load().then(handleUrlOnLoad);
+document.addEventListener('click',e=>{ if(!e.target.closest('.search-wrap')) document.getElementById('searchPopup').style.display='none'; });
 
-const canvas = document.getElementById("starRain");
-const ctx = canvas.getContext("2d");
-
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
-
-window.addEventListener("resize", () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-});
-
-let stars = [];
-
-function spawnStar() {
-    return {
-        x: Math.random() * canvas.width,
-        y: -10,
-        size: Math.random() * 3 + 1,
-        speed: Math.random() * 8 + 4,
-        drift: Math.random() * 1.5 - 0.75
-    };
-}
-
-// keep feeding stars constantly (THIS is the “rain” effect)
-setInterval(() => {
-    for (let i = 0; i < 6; i++) {
-        stars.push(spawnStar());
+/* ─── Star canvas ───────────────────────────────────────── */
+const canvas=document.createElement('canvas');
+canvas.style.cssText='position:fixed;inset:0;z-index:0;pointer-events:none;';
+document.body.prepend(canvas);
+const ctx=canvas.getContext('2d');
+canvas.width=window.innerWidth; canvas.height=window.innerHeight;
+window.addEventListener('resize',()=>{canvas.width=window.innerWidth;canvas.height=window.innerHeight;});
+let stars=[];
+function spawnStar(){return{x:Math.random()*canvas.width,y:-10,size:Math.random()*3+1,speed:Math.random()*8+4,drift:Math.random()*1.5-0.75};}
+setInterval(()=>{for(let i=0;i<6;i++)stars.push(spawnStar());},80);
+(function animate(){
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    for(let i=0;i<stars.length;i++){
+        const s=stars[i];
+        ctx.beginPath();ctx.fillStyle='white';ctx.shadowBlur=10;ctx.shadowColor='#00eeff';
+        ctx.arc(s.x,s.y,s.size,0,Math.PI*2);ctx.fill();
+        s.y+=s.speed;s.x+=s.drift;
+        if(s.y>canvas.height+20){stars.splice(i,1);i--;}
     }
-}, 80);
-
-function animate() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-    for (let i = 0; i < stars.length; i++) {
-        const s = stars[i];
-
-        ctx.beginPath();
-        ctx.fillStyle = "white";
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = "#00eeff";
-
-        ctx.arc(s.x, s.y, s.size, 0, Math.PI * 2);
-        ctx.fill();
-
-        s.y += s.speed;
-        s.x += s.drift;
-
-        // remove when off screen
-        if (s.y > canvas.height + 20) {
-            stars.splice(i, 1);
-            i--;
-        }
-    }
-
     requestAnimationFrame(animate);
-}
-
-animate();
-
+})();
 </script>
 </body>
 </html>
