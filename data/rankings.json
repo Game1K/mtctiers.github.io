@@ -207,7 +207,7 @@
     },
     {
       "name": "LastChance",
-      "region": "EU",
+      "region": "NA",
       "device": "MK"
     },
     {
@@ -538,11 +538,11 @@
     ]
   },
   "Diamond": {
-    "RHT1": [
-      "Game1K"
-    ],
     "LT1": [
       "sample"
+    ],
+    "RHT1": [
+      "Game1K"
     ],
     "HT2": [
       "skibidi1234",
