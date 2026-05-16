@@ -253,7 +253,7 @@
     {
       "name": "salton",
       "region": "AS",
-      "device": "MB"
+      "device": "TP"
     },
     {
       "name": "shadow_master",
